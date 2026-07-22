@@ -52,6 +52,53 @@ class Scraper:
 
         return years
 
+    def get_movie_ids(self, year_url):
+
+        items = self._parse(year_url)
+
+        movies = []
+
+        year = os.path.basename(
+            year_url.rstrip("/")
+        )
+
+        for item in items:
+
+            href = item["href"]
+
+            if href == "../":
+                continue
+
+            folder = href.strip("/")
+
+            if not folder.isdigit():
+                continue
+
+            movie_url = urljoin(
+                year_url,
+                href
+            )
+
+            movies.append({
+                "id": folder,
+                "year": year,
+                "url": movie_url
+            })
+
+        return movies
+    def get_movie_info(self, movie):
+
+        title = self._guess_movie_title(
+            movie["url"]
+        )
+
+        return {
+            "id": movie["id"],
+            "label": title,
+            "year": movie["year"],
+            "url": movie["url"]
+        }
+
     def get_movie_folders(self, year_url):
 
         items = self._parse(year_url)
@@ -70,14 +117,14 @@ class Scraper:
             if not folder.isdigit():
                 continue
 
-            movie_url = urljoin(year_url, href)
+            movie = {
+                "id": folder,
+                "url": urljoin(year_url, href)
+            }
 
-            title = self._guess_movie_title(movie_url)
-
-            movies.append({
-                "label": title,
-                "url": movie_url
-            })
+            movies.append(
+                self.get_movie_info(movie)
+            )
 
         movies.sort(key=lambda x: x["label"])
 
@@ -105,18 +152,30 @@ class Scraper:
 
     def _filename_to_title(self, filename):
 
-        filename = os.path.splitext(filename)[0]
+        # حذف پسوند فایل
+        name = os.path.splitext(filename)[0]
 
-        filename = re.sub(
-            r'\.(480p|720p|1080p|2160p).*',
-            '',
-            filename,
-            flags=re.IGNORECASE
-        )
+        # پیدا کردن اولین سال معتبر
+        match = re.search(r"(19\d{2}|20\d{2})", name)
 
-        filename = filename.replace(".", " ")
+        if not match:
 
-        return filename.strip()
+            name = re.sub(r"[._+\-]+", " ", name)
+
+            return re.sub(r"\s+", " ", name).strip()
+
+        year = match.group(1)
+
+        # فقط قسمت قبل از سال
+        title = name[:match.start()]
+
+        # تبدیل جداکننده‌ها به فاصله
+        title = re.sub(r"[._+\-]+", " ", title)
+
+        # حذف فاصله‌های اضافی
+        title = re.sub(r"\s+", " ", title).strip()
+
+        return f"{title} ({year})"
 
     def get_video_files(self, movie_url):
 
@@ -131,8 +190,38 @@ class Scraper:
             if not name.lower().endswith((".mkv", ".mp4", ".avi")):
                 continue
 
+            lower = name.lower()
+
+            # کیفیت
+            quality = ""
+
+            for q in ("2160p", "1080p", "720p", "480p"):
+                if q in lower:
+                    quality = q.upper()
+                    break
+
+            # کدک
+            codec = ""
+            if "x265" in lower or "hevc" in lower:
+                codec = " x265"
+
+            # ریلیز
+            release = ""
+
+            if ".psa." in lower:
+                release = "PSA"
+            elif ".yify." in lower:
+                release = "YIFY"
+            elif ".pahe." in lower:
+                release = "Pahe"
+
+            label = quality + codec
+
+            if release:
+                label += " (" + release + ")"
+
             videos.append({
-                "label": name,
+                "label": label,
                 "url": urljoin(movie_url, item["href"])
             })
 

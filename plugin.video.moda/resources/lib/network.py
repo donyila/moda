@@ -1,6 +1,7 @@
-import urllib.request
-import urllib.error
+import socket
 import ssl
+import urllib.error
+import urllib.request
 
 
 class Network:
@@ -26,10 +27,53 @@ class Network:
             headers=self.headers
         )
 
-        response = urllib.request.urlopen(
-            request,
-            timeout=30,
-            context=self.context
-        )
+        try:
 
-        return response.read().decode("utf-8", "ignore")
+            response = urllib.request.urlopen(
+                request,
+                timeout=30,
+                context=self.context
+            )
+
+            return response.read().decode(
+                "utf-8",
+                "ignore"
+            )
+
+        except urllib.error.HTTPError as e:
+
+            raise RuntimeError(
+                f"HTTP Error {e.code}"
+            )
+
+        except urllib.error.URLError as e:
+
+            reason = e.reason
+
+            if isinstance(reason, socket.timeout):
+
+                raise RuntimeError(
+                    "Connection timeout."
+                )
+
+            if isinstance(reason, socket.gaierror):
+
+                raise RuntimeError(
+                    "Cannot resolve server address."
+                )
+
+            raise RuntimeError(
+                "Cannot connect to server."
+            )
+
+        except socket.timeout:
+
+            raise RuntimeError(
+                "Connection timeout."
+            )
+
+        except Exception as e:
+
+            raise RuntimeError(
+                str(e)
+            )

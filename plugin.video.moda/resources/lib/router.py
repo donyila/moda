@@ -1,10 +1,15 @@
+import os
+import xbmcvfs
 import sys
 from urllib.parse import parse_qsl
+from urllib.parse import quote_plus
 
 import xbmcplugin
 import xbmcgui
+import xbmc
 
 from resources.lib.scraper import Scraper
+from resources.lib.library import LibraryManager
 
 
 class Router:
@@ -19,25 +24,66 @@ class Router:
             self.params = {}
 
         self.scraper = Scraper()
+        self.library = LibraryManager()
+        self.profile = xbmcvfs.translatePath(
+        "special://profile/addon_data/plugin.video.moda/"
+        )
+
+        os.makedirs(self.profile, exist_ok=True)
 
     def run(self):
 
         action = self.params.get("action")
 
-        if action is None:
-            self.root()
+        try:
 
-        elif action == "years":
-            self.show_years()
+            if action is None:
+                self.root()
 
-        elif action == "movies":
-            self.show_movies()
+            elif action == "years":
+                self.show_years()
 
-        elif action == "videos":
-            self.show_videos()
+            elif action == "movies":
+                self.show_movies()
 
-        elif action == "play":
-            self.play()
+            elif action == "quality":
+                self.show_quality()
+
+            elif action == "play":
+                self.play()
+
+            elif action == "sync":
+                self.sync_library()
+
+        except RuntimeError as e:
+
+            message = str(e)
+
+            xbmc.log(
+                f"[MODA] {message}",
+                xbmc.LOGERROR
+            )
+
+            xbmcgui.Dialog().notification(
+                "MODA",
+                message,
+                xbmcgui.NOTIFICATION_ERROR,
+                5000
+            )
+
+        except Exception as e:
+
+            xbmc.log(
+                f"[MODA] Unexpected Error: {e}",
+                xbmc.LOGERROR
+            )
+
+            xbmcgui.Dialog().notification(
+                "MODA",
+                "Unexpected error.",
+                xbmcgui.NOTIFICATION_ERROR,
+                5000
+            )
 
     def root(self):
 
@@ -53,6 +99,20 @@ class Router:
             url,
             li,
             True
+        )
+
+        li = xbmcgui.ListItem("Update Library")
+
+        url = (
+            sys.argv[0]
+            + "?action=sync"
+        )
+
+        xbmcplugin.addDirectoryItem(
+            self.handle,
+            url,
+            li,
+            False
         )
 
         xbmcplugin.endOfDirectory(self.handle)
@@ -93,9 +153,9 @@ class Router:
 
             url = (
                 sys.argv[0]
-                + "?action=videos"
-                + "&url="
-                + movie["url"]
+                + "?action=quality"
+                + "&id=" + quote_plus(movie["id"])
+                + "&url=" + quote_plus(movie["url"])
             )
 
             xbmcplugin.addDirectoryItem(
@@ -107,31 +167,33 @@ class Router:
 
         xbmcplugin.endOfDirectory(self.handle)
 
-    def show_videos(self):
+    def show_quality(self):
 
         movie_url = self.params["url"]
 
         videos = self.scraper.get_video_files(movie_url)
 
-        for video in videos:
-
-            li = xbmcgui.ListItem(video["label"])
-
-            li.setProperty("IsPlayable", "true")
-
-            url = (
-                sys.argv[0]
-                + "?action=play"
-                + "&url="
-                + video["url"]
+        if not videos:
+            xbmcgui.Dialog().notification(
+                "MODA",
+                "No video found.",
+                xbmcgui.NOTIFICATION_ERROR
             )
+            return
 
-            xbmcplugin.addDirectoryItem(
-                self.handle,
-                url,
-                li,
-                False
-            )
+        labels = [video["label"] for video in videos]
+
+        index = xbmcgui.Dialog().select(
+            "Choose Quality",
+            labels
+        )
+
+        if index == -1:
+            return
+
+        selected = videos[index]["url"]
+
+        xbmc.Player().play(selected)
 
         xbmcplugin.endOfDirectory(self.handle)
 
@@ -146,3 +208,12 @@ class Router:
             True,
             li
         )
+    def sync_library(self):
+
+        created = self.library.sync_library()
+
+        if created > 0:
+
+            xbmc.executebuiltin(
+                "UpdateLibrary(video)"
+            )

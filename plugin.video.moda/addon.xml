@@ -3,11 +3,15 @@
 <addon
     id="plugin.video.moda"
     name="Moda"
-    version="0.1.0"
+    version="1.1.2"
     provider-name="donyila">
 
     <requires>
         <import addon="xbmc.python" version="3.0.1"/>
+        <import
+        addon="metadata.movies.thetvdb.com.v4.python"
+        version="1.0.0"
+        />
     </requires>
 
     <extension
@@ -28,8 +32,18 @@
             Browse and stream remote movies.
         </description>
 
+	<assets>
+		<icon>icon.png</icon>
+	</assets>
+
         <platform>all</platform>
 
+    </extension>
+
+    <extension
+        point="xbmc.service"
+        library="service.py"
+        start="startup">
     </extension>
 
 </addon>
