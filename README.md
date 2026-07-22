@@ -57,13 +57,8 @@ plugin.video.moda/
 -   [x] STRM generation
 -   [x] Library synchronization
 
+
 ### Phase 2
-
--   [ ] TVDb metadata
--   [ ] NFO generation
--   [ ] Poster & Fanart download
-
-### Phase 3
 
 -   [ ] TV Shows support
 -   [ ] Seasons & Episodes
@@ -80,6 +75,6 @@ MIT License
 
 ## Author
 
-**Ali (donyila)**
+donyila
 
 GitHub: https://github.com/donyila
