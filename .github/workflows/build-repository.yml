@@ -1,0 +1,44 @@
+name: Build MODA Repository
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+
+      - name: Build Kodi Repository
+        run: |
+          python tools/build_repository.py
+
+
+      - name: Commit generated files
+        run: |
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add addons.xml addons.xml.md5 addons.xml.gz zips/
+
+          git diff --cached --quiet || git commit -m "Update Kodi repository"
+
+          git push
